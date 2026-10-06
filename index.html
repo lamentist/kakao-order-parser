@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>카카오톡 주문 파서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: 좌측 입력(상품 설정 + 대화), 우측 시트 결과(원본 탭 + 수령일별 탭). 좁은 화면에서는 세로로 쌓임 */
+:root{
+  --bg:#f3f5f4;
+  --surface:#ffffff;
+  --fg:#1c2623;
+  --muted:#5b6a65;
+  --line:#d5dcd9;
+  --accent:#1d6b57;
+  --accent-fg:#ffffff;
+  --row-review:#dedede;
+  --row-cancelled:#ffd48a;
+  --row-staff:#eef1f0;
+  --chk-a:#ffe599;
+  --chk-b:#ea9999;
+  --chk-c:#cfe2f3;
+  --pos:#1d6b57;
+  --neg:#b3392f;
+  --font-body:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-data:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141a18;--surface:#1c2421;--fg:#e6ecea;--muted:#9aaba5;--line:#2f3b37;
+    --accent:#4fb99b;--accent-fg:#0d1512;--row-review:#3a3f3d;--row-cancelled:#6b4d17;--row-staff:#222b28;
+    --chk-a:#6e5a1c;--chk-b:#7a3a3a;--chk-c:#2f4a63;
+    --pos:#6fd0b2;--neg:#ff8a7e;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141a18;--surface:#1c2421;--fg:#e6ecea;--muted:#9aaba5;--line:#2f3b37;
+  --accent:#4fb99b;--accent-fg:#0d1512;--row-review:#3a3f3d;--row-cancelled:#6b4d17;--row-staff:#222b28;
+  --chk-a:#6e5a1c;--chk-b:#7a3a3a;--chk-c:#2f4a63;
+  --pos:#6fd0b2;--neg:#ff8a7e;color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.55;padding-inline:16px;padding-block:20px 40px}
+*{box-sizing:border-box}
+.wrap{max-width:1320px;margin-inline:auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font-size:22px;line-height:1.25;margin:0;font-weight:700;text-wrap:balance}
+.sub{color:var(--muted);margin:0;max-width:72ch}
+.notice{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:10px 14px;color:var(--muted);font-size:13px}
+.notice b{color:var(--fg);font-weight:700}
+.grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{font-size:13px;margin:0;letter-spacing:.04em;color:var(--muted);font-weight:700}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.kwitem{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--bg)}
+.kwline{display:grid;grid-template-columns:minmax(0,1fr) 28px;gap:6px;align-items:center}
+.kwnums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.kwnums label{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:var(--muted)}
+input[type=text],input[type=number],textarea{width:100%;min-width:0;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:6px 8px}
+textarea{font-family:var(--font-data);font-size:12.5px;line-height:1.6;min-height:280px;resize:vertical;white-space:pre;background:var(--bg)}
+input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;font-size:13px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:6px 12px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:700}
+button.icon{padding:4px 0;width:28px;color:var(--muted)}
+button:hover{border-color:var(--accent)}
+.status{font-size:12px;color:var(--muted);font-family:var(--font-data)}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:0}
+@media (prefers-reduced-motion:no-preference){.live.on{animation:pulse 1.2s ease-in-out infinite}}
+@keyframes pulse{50%{opacity:.25}}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border:1px solid var(--line);margin-right:6px;vertical-align:-2px}
+.l-review::before{background:var(--row-review)}
+.l-cancel::before{background:var(--row-cancelled)}
+.l-staff::before{background:var(--row-staff)}
+.l-a::before{background:var(--chk-a)}
+.l-b::before{background:var(--chk-b)}
+.l-c::before{background:var(--chk-c)}
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line)}
+.tabs button{border:1px solid var(--line);border-bottom:0;border-radius:4px 4px 0 0;background:var(--bg);color:var(--muted);white-space:nowrap;font-family:var(--font-data);font-size:12px}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);font-weight:500;border-color:var(--accent);border-bottom:2px solid var(--surface);margin-bottom:-1px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+thead th{background:var(--bg);color:var(--muted);font-weight:500;font-size:12px;white-space:nowrap}
+td.num,th.num{text-align:right;font-family:var(--font-data);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.cb,th.cb{text-align:center;width:44px;padding-inline:4px}
+td.cb input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+td.msg{font-family:var(--font-data);font-size:12.5px;min-width:240px;white-space:pre-wrap;word-break:break-word}
+tr.sum td{background:var(--bg);font-weight:500}
+tr.sum td.lbl{color:var(--muted);font-weight:400}
+tr.review td:not(.cb){background:var(--row-review)}
+tr.cancelled td:not(.cb){background:var(--row-cancelled)}
+tr.staff td:not(.cb){background:var(--row-staff);color:var(--muted)}
+tr.chk-c td:not(.cb){background:var(--chk-c)}
+tr.chk-b td:not(.cb){background:var(--chk-b)}
+tr.chk-a td:not(.cb){background:var(--chk-a)}
+tr.divider td{background:var(--bg);color:var(--muted);font-size:12px;text-align:center}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+tr.chk-a .pos,tr.chk-b .pos,tr.chk-c .pos{color:inherit}
+.tag{font-size:11.5px;white-space:nowrap}
+.sheetmeta{font-size:12px;color:var(--muted);font-family:var(--font-data)}
+details{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:10px 14px}
+summary{cursor:pointer;font-weight:500}
+details ul{margin:10px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+code{font-family:var(--font-data);font-size:12px;background:var(--bg);padding:1px 5px;border-radius:3px}
+.alerts{font-size:13px;color:var(--muted)}
+.toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <h1>카카오톡 주문 파서</h1>
+    <p class="sub">카카오톡 공동구매 대화에서 주문과 취소를 읽어 시트로 정리하고, 수령일별 시트로 나누는 과정을 브라우저에서 직접 돌려 볼 수 있는 시연 페이지입니다. 상품 설정과 대화를 고쳐 보세요.</p>
+  </header>
+  <div class="notice"><b>시연용 가상 데이터입니다.</b> 실제 프로그램은 PC 카카오톡 창을 10초마다 자동 저장해 구글 스프레드시트에 올립니다. 이 페이지는 같은 규칙을 브라우저 안에서만 재현하며, 입력한 내용을 어디에도 전송하거나 저장하지 않습니다. 구글 시트 연동 자체는 포함하지 않았고, 이름과 상품은 모두 예시입니다.</div>
+
+  <div class="grid">
+    <div class="stack">
+      <section class="panel" aria-labelledby="kwh">
+        <h2 id="kwh">상품 설정 (시트 3~6행에 해당)</h2>
+        <div id="kwlist" class="stack" style="gap:8px"></div>
+        <div class="btns"><button id="addkw" type="button">상품 추가</button></div>
+        <p class="hint">상품명 별칭은 <code>사과/홍로</code> 처럼 / 로 구분합니다. 수령일은 <code>260312</code>, <code>3.19</code>, <code>3/19</code>, <code>2026.3.19</code> 형식을 읽고, 같은 수령일의 상품끼리 한 시트로 묶입니다.</p>
+      </section>
+      <section class="panel" aria-labelledby="chh">
+        <h2 id="chh">카카오톡 대화 (내보내기 형식)</h2>
+        <textarea id="chat" spellcheck="false" aria-label="카카오톡 대화 입력"></textarea>
+        <div class="btns">
+          <button id="sim" type="button" class="primary">자동 수집 시뮬레이션</button>
+          <button id="sample" type="button">샘플 전체 불러오기</button>
+          <button id="clear" type="button">비우기</button>
+        </div>
+        <div class="status" id="simstatus" aria-live="polite"><span class="live" id="livedot"></span><span id="simtext">대기 중</span></div>
+        <p class="hint">형식: <code>[작성자] [시간] 내용</code>. 이어지는 줄은 직전 작성자의 메시지로 처리합니다. 작성자 이름에 "운영진"이 있으면 파싱하지 않습니다. 시뮬레이션은 가상 메시지를 몇 초 간격으로 추가하며, 실제 프로그램은 10초 주기입니다.</p>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="rh">
+        <div class="toolbar">
+          <h2 id="rh">주문 시트 결과</h2>
+        </div>
+        <div class="tabs" id="tabs" role="tablist" aria-label="시트 탭"></div>
+        <div class="sheetmeta" id="sheetmeta"></div>
+        <div class="tablewrap"><table id="sheet"></table></div>
+        <div class="legend">
+          <span class="l-review">확인 필요</span><span class="l-cancel">취소된 원본 주문</span><span class="l-staff">운영진·시스템(제외)</span>
+          <span class="l-a">수령 체크</span><span class="l-b">선입금 체크</span><span class="l-c">지연 체크</span>
+        </div>
+        <div id="alerts" class="alerts"></div>
+      </section>
+      <details>
+        <summary>동작 규칙 보기</summary>
+        <ul>
+          <li>주문: <code>딸기2 사과1</code> 처럼 상품명 뒤의 숫자를 수량으로 읽습니다. <code>딸기 3</code>, <code>딸기:3</code> 도 인식합니다. 상품명 뒤에 한글이 더 붙어도(완숙토마토) 같은 상품으로 봅니다.</li>
+          <li>취소: <code>딸기 취소요</code> 는 같은 작성자의 가장 최근 딸기 주문 수량만큼 음수로 넣고, 그 원본 행을 주황색으로 표시합니다. <code>딸기 1취소요</code> 는 -1 입니다.</li>
+          <li>확인 필요(회색): 상품명이 하나도 안 맞는 메시지, 상품 없이 "취소요"만 쓴 메시지, 이전 주문을 찾지 못한 취소는 관리자가 보도록 표시합니다.</li>
+          <li>운영진이 쓴 메시지는 이어지는 줄까지 파싱하지 않습니다.</li>
+          <li>수령일별 시트: 시트 4행의 수령일이 같은 상품끼리 묶어 날짜별 탭을 만듭니다. 해당 상품에 수량이 있는 행만 옮기고, 메시지는 작성자와 시간 뒤에 그 날짜 상품의 수량만 다시 적고 대화 날짜 태그를 붙입니다. 체크 상태와 행 표시는 원본과 같이 유지됩니다.</li>
+          <li>체크박스: 수령은 연노랑, 선입금은 연빨강, 지연은 연파랑으로 행 전체가 바뀌며, 여러 개를 켜면 수령, 선입금, 지연 순으로 우선합니다.</li>
+          <li>결제금액은 행별 수량 × 판매가의 합이고, 잔여수량은 총수량에서 순주문수량(주문 + 취소 음수)을 뺀 값입니다.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var BASE_NAME = "테스트방";
+  var FEED = [
+    ["[운영진 별] [오후 1:58] 오늘 공구 안내드립니다. 딸기, 사과, 완숙토마토 주문 받아요"],
+    ["[고객A] [오후 2:03] 딸기2 사과1"],
+    ["[고객B] [오후 2:05] 완숙토마토1"],
+    ["[고객C] [오후 2:07] 딸기 3"],
+    ["[고객C] [오후 2:08] 사과1"],
+    ["[고객A] [오후 2:11] 딸기 취소요"],
+    ["[고객D] [오후 2:15] 딸기1","사과2"],
+    ["[고객B] [오후 2:18] 완숙 1취소요"],
+    ["[고객E] [오후 2:20] 혹시 배송은 언제 오나요?"],
+    ["[고객F] [오후 2:22] 포도 취소요"],
+    ["[고객D] [오후 2:25] 홍로1 추가요"],
+    ["[고객G] [오후 2:31] 완숙2 딸기1"],
+    ["[고객H] [오후 2:36] 완숙토마토 3"],
+    ["[운영진 별] [오후 2:40] 고객E님 내일 도착합니다. 사과 재고 확인 중이에요"]
+  ];
+  var DATE_HEAD = "--------------- 2026년 10월 5일 월요일 ---------------";
+  var SAMPLE = [DATE_HEAD].concat(FEED.reduce(function(a,b){return a.concat(b)},[])).join("\n");
+
+  var DEFAULT_KW = [
+    {name:"딸기", price:8000, total:30, date:"10.8"},
+    {name:"사과/홍로", price:5000, total:20, date:"10.8"},
+    {name:"완숙", price:6000, total:10, date:"10.10"}
+  ];
+
+  var MSG_PATTERN = /^\[(.*?)\]\s+\[(.*?)\]\s*(.*)$/;
+  var DATE_LINE = /^-{5,}\s*(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일\s*[가-힣]+\s*-{5,}$/;
+  var NOTICE = ["초대했습니다","메시지가 삭제되었습니다","님이 나갔습니다","님이 들어왔습니다"];
+  var KW_SUFFIX = "[가-힣a-zA-Z]*";
+
+  var kwList = DEFAULT_KW.map(function(k){return {name:k.name,price:k.price,total:k.total,date:k.date}});
+  var checks = {};          /* 행 번호 -> [수령, 선입금, 지연] */
+  var activeTab = "orig";
+  var simTimer = null, simPos = 0;
+
+  var kwEl = document.getElementById("kwlist");
+  var chatEl = document.getElementById("chat");
+  var sheetEl = document.getElementById("sheet");
+  var alertsEl = document.getElementById("alerts");
+  var tabsEl = document.getElementById("tabs");
+  var metaEl = document.getElementById("sheetmeta");
+
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+  function reEsc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}
+  function aliases(name){
+    var s = String(name);
+    if(s.indexOf("/")>=0){return s.split("/").map(function(a){return a.trim()}).filter(Boolean)}
+    return [s.trim()];
+  }
+  function fmt(n){return n.toLocaleString("ko-KR")}
+
+  /* parse_receipt_date 이식 */
+  function parseReceiptDate(v){
+    var s = String(v||"").trim(), m;
+    if(!s){return null}
+    function ok(mo,d){return mo>=1&&mo<=12&&d>=1&&d<=31}
+    if(/^\d{6}$/.test(s)){
+      var y=2000+parseInt(s.slice(0,2),10), mo=parseInt(s.slice(2,4),10), d=parseInt(s.slice(4,6),10);
+      if(ok(mo,d)){return {y:y,m:mo,d:d,f:y+"."+mo+"."+d}}
+    }
+    m = /^(\d{1,2})\.(\d{1,2})$/.exec(s) || /^(\d{1,2})\/(\d{1,2})$/.exec(s);
+    if(m){var mo2=parseInt(m[1],10), d2=parseInt(m[2],10); if(ok(mo2,d2)){return {y:2026,m:mo2,d:d2,f:"2026."+mo2+"."+d2}}}
+    m = /^(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})$/.exec(s);
+    if(m){var y3=parseInt(m[1],10), mo3=parseInt(m[2],10), d3=parseInt(m[3],10); if(ok(mo3,d3)){return {y:y3,m:mo3,d:d3,f:y3+"."+mo3+"."+d3}}}
+    return null;
+  }
+
+  /* parse_order_message 이식 */
+  function parseOrder(content, keywords, author, history){
+    var parsed = {}, needsReview = false, cancelRows = [];
+    var text = String(content).trim();
+    if(!text){return {parsed:parsed,needsReview:false,cancelRows:cancelRows}}
+    var isCancel = text.indexOf("취소") >= 0;
+    var hist = (history[author] || []).slice().reverse();
+    var i, j, kw, al, m, re;
+    if(isCancel){
+      var matchedAny = false;
+      for(i=0;i<keywords.length;i++){
+        kw = keywords[i];
+        var als = aliases(kw);
+        for(j=0;j<als.length;j++){
+          al = als[j]; if(!al){continue}
+          re = new RegExp(reEsc(al)+KW_SUFFIX+"\\s*(\\d*)\\s*취소");
+          m = re.exec(text);
+          if(m){
+            matchedAny = true;
+            var num = m[1];
+            if(num){
+              parsed[kw] = -parseInt(num,10);
+              for(var h=0;h<hist.length;h++){ if(hist[h].kw===kw && hist[h].qty>0){cancelRows.push(hist[h].row);break} }
+            } else {
+              var prevQty = 0, prevRow = null;
+              for(var g=0;g<hist.length;g++){ if(hist[g].kw===kw && hist[g].qty>0){prevQty=hist[g].qty;prevRow=hist[g].row;break} }
+              if(prevQty>0){parsed[kw] = -prevQty; cancelRows.push(prevRow)} else {needsReview = true}
+            }
+            break;
+          }
+        }
+      }
+      if(!matchedAny){needsReview = true}
+    } else {
+      for(i=0;i<keywords.length;i++){
+        kw = keywords[i];
+        var als2 = aliases(kw);
+        for(j=0;j<als2.length;j++){
+          al = als2[j]; if(!al){continue}
+          re = new RegExp(reEsc(al)+KW_SUFFIX+"\\s*[:\\-]?\\s*(\\d+)");
+          m = re.exec(text);
+          if(m){parsed[kw] = parseInt(m[1],10); break}
+        }
+      }
+      if(Object.keys(parsed).length===0){needsReview = true}
+    }
+    return {parsed:parsed,needsReview:needsReview,cancelRows:cancelRows};
+  }
+
+  /* 대화 텍스트를 행 단위로 분해하고 작성자와 [작성자][시간] 접두사를 이어 붙임 */
+  function buildRows(raw){
+    var rows = [], lastAuthor = null, lastStaff = false, lastPrefix = "", chatDate = null;
+    var lines = String(raw).split("\n");
+    for(var i=0;i<lines.length;i++){
+      var line = lines[i].trim();
+      if(!line){continue}
+      var dm = DATE_LINE.exec(line);
+      if(dm){
+        if(!chatDate){chatDate = {y:+dm[1],m:+dm[2],d:+dm[3]}}
+        rows.push({kind:"divider",text:dm[1]+"년 "+dm[2]+"월 "+dm[3]+"일"});lastAuthor=null;continue;
+      }
+      var m = MSG_PATTERN.exec(line);
+      if(m){
+        lastAuthor = m[1]; lastStaff = lastAuthor.indexOf("운영진") >= 0;
+        lastPrefix = "["+m[1]+"] ["+m[2]+"]";
+        rows.push({kind:"msg",author:lastAuthor,staff:lastStaff,display:line,prefix:lastPrefix,content:m[3]});
+        continue;
+      }
+      var isNotice = NOTICE.some(function(k){return line.indexOf(k)>=0});
+      if(isNotice){rows.push({kind:"system",display:line});lastAuthor=null;continue}
+      if(lastAuthor!==null){
+        rows.push({kind:"msg",author:lastAuthor,staff:lastStaff,display:line,prefix:lastPrefix,content:line,cont:true});
+      } else {
+        rows.push({kind:"system",display:line});
+      }
+    }
+    return {rows:rows, chatDate:chatDate};
+  }
+
+  function compute(){
+    var keywords = kwList.map(function(k){return k.name.trim()}).filter(Boolean);
+    var built = buildRows(chatEl.value);
+    var history = {}, out = [], cancelledSource = {};
+    built.rows.forEach(function(r,idx){
+      var res = {r:r,idx:idx,parsed:{},review:false};
+      if(r.kind==="msg" && !r.staff){
+        var p = parseOrder(r.content, keywords, r.author, history);
+        res.parsed = p.parsed; res.review = p.needsReview;
+        p.cancelRows.forEach(function(x){cancelledSource[x]=true});
+        Object.keys(p.parsed).forEach(function(k){
+          (history[r.author] = history[r.author] || []).push({kw:k,qty:p.parsed[k],row:idx});
+        });
+      }
+      out.push(res);
+    });
+    return {rows:out, cancelled:cancelledSource, chatDate:built.chatDate};
+  }
+
+  function getChecks(idx){return checks[idx] || (checks[idx]=[false,false,false])}
+
+  /* 수령일별 키워드 그룹핑 (시트 3·4행 기준) */
+  function groupByDate(){
+    var groups = {}, order = [];
+    kwList.forEach(function(k){
+      var name = k.name.trim(); if(!name){return}
+      var pd = parseReceiptDate(k.date); if(!pd){return}
+      if(!groups[pd.f]){groups[pd.f] = {f:pd.f, pd:pd, kws:[]}; order.push(pd.f)}
+      groups[pd.f].kws.push(k);
+    });
+    order.sort(function(a,b){var x=groups[a].pd, y=groups[b].pd; return (x.y-y.y)||(x.m-y.m)||(x.d-y.d)});
+    return order.map(function(f){return groups[f]});
+  }
+
+  function render(){
+    var c = compute();
+    var groups = groupByDate();
+    var tabIds = ["orig"].concat(groups.map(function(g){return g.f}));
+    if(tabIds.indexOf(activeTab) < 0){activeTab = "orig"}
+
+    var cd = c.chatDate;
+    var cdName = cd ? cd.y+"."+cd.m+"."+cd.d : "미지정";
+    var cdTag = cd ? "("+cd.m+"."+cd.d+")" : "";
+    var origName = BASE_NAME+"_"+cdName+"_원본";
+
+    /* 탭 */
+    tabsEl.innerHTML = "";
+    tabIds.forEach(function(id){
+      var b = document.createElement("button");
+      b.type="button"; b.setAttribute("role","tab"); b.id="tab_"+id.replace(/\./g,"_");
+      b.setAttribute("aria-selected", id===activeTab ? "true":"false");
+      b.textContent = id==="orig" ? origName : BASE_NAME+"_"+id;
+      b.addEventListener("click",function(){activeTab=id;render()});
+      tabsEl.appendChild(b);
+    });
+
+    var group = null;
+    if(activeTab!=="orig"){group = groups.filter(function(g){return g.f===activeTab})[0]}
+    var kws = group ? group.kws.filter(function(k){return k.name.trim()}) : kwList.filter(function(k){return k.name.trim()});
+
+    var sums = {}, cancels = {};
+    kws.forEach(function(k){sums[k.name.trim()]=0;cancels[k.name.trim()]=0});
+    var body = "", no = 0, reviewCount = 0, cancelCount = 0, orderCount = 0, payTotal = 0, shown = 0;
+    var colspan = kws.length + 6;
+
+    c.rows.forEach(function(x){
+      var r = x.r;
+      if(r.kind==="divider"){
+        if(!group){body += '<tr class="divider"><td colspan="'+colspan+'">'+esc(r.text)+'</td></tr>'}
+        return;
+      }
+      if(r.kind==="system"){
+        if(!group){body += '<tr class="staff"><td class="cb"></td><td class="cb"></td><td class="cb"></td><td class="num"></td><td class="msg">'+esc(r.display)+'</td><td colspan="'+(kws.length+2)+'"><span class="tag">시스템 메시지</span></td></tr>'}
+        return;
+      }
+      no++;
+      if(group){
+        var any = kws.some(function(k){return x.parsed[k.name.trim()]});
+        if(!any){return}
+      }
+      shown++;
+      var ck = getChecks(x.idx);
+      var cls = "", tag = "", pay = 0, cells = "", hasQty = false;
+      kws.forEach(function(k){
+        var key = k.name.trim(), q = x.parsed[key];
+        if(q){
+          hasQty = true; sums[key] += q; if(q<0){cancels[key]+=q}
+          pay += q*(Number(k.price)||0);
+          cells += '<td class="num '+(q>0?"pos":"neg")+'">'+(q>0?"+":"")+q+'</td>';
+        } else {cells += '<td class="num"></td>'}
+      });
+      if(r.staff){cls="staff";tag="운영진 · 파싱 제외"}
+      else if(x.review){cls="review";tag="확인 필요";reviewCount++}
+      else if(hasQty){
+        var neg = kws.some(function(k){return x.parsed[k.name.trim()]<0});
+        tag = neg ? "취소" : "주문"; neg ? cancelCount++ : orderCount++;
+      }
+      if(c.cancelled[x.idx] && !r.staff){cls = (cls==="review"?"review":"cancelled"); tag = tag ? tag+" · 취소됨" : "취소됨"}
+      if(ck[2]){cls = "chk-c"} if(ck[1]){cls = "chk-b"} if(ck[0]){cls = "chk-a"}
+      payTotal += pay;
+      var msgText = r.display;
+      if(group){
+        var parts = [];
+        kws.forEach(function(k){var q = x.parsed[k.name.trim()]; if(q){parts.push(aliases(k.name)[0]+(q>0?q:" "+q))}});
+        msgText = r.prefix+" "+parts.join(" ")+(cdTag?" "+cdTag:"");
+      }
+      var cb = "";
+      for(var ci=0; ci<3; ci++){
+        cb += '<td class="cb"><input type="checkbox" data-row="'+x.idx+'" data-col="'+ci+'" aria-label="'+["수령","선입금","지연"][ci]+' 체크"'+(ck[ci]?" checked":"")+'></td>';
+      }
+      body += '<tr class="'+cls+'">'+cb+'<td class="num">'+shown+'</td><td class="msg">'+esc(msgText)+'</td>'+cells+
+              '<td class="num">'+(pay?fmt(pay):"")+'</td><td><span class="tag">'+esc(tag)+'</span></td></tr>';
+    });
+
+    var th = '<thead><tr><th class="cb">수령</th><th class="cb">선입금</th><th class="cb">지연</th><th class="num">No.</th><th>메시지</th>';
+    kws.forEach(function(k){th += '<th class="num">'+esc(k.name.trim())+'</th>'});
+    th += '<th class="num">결제금액</th><th>상태</th></tr></thead>';
+
+    function sumRow(label, fn, money){
+      var s = '<tr class="sum"><td></td><td></td><td></td><td></td><td class="lbl">'+label+'</td>';
+      kws.forEach(function(k){var v = fn(k); s += '<td class="num">'+(money?fmt(v):v)+'</td>'});
+      s += '<td></td><td></td></tr>';
+      return s;
+    }
+    var head = "";
+    if(group){
+      head += '<tr class="sum"><td></td><td></td><td></td><td></td><td class="lbl">수령일</td>';
+      kws.forEach(function(k){head += '<td class="num">'+esc(String(k.date).trim())+'</td>'});
+      head += '<td></td><td></td></tr>';
+    }
+    head += sumRow("판매가", function(k){return Number(k.price)||0}, true);
+    head += sumRow("총수량", function(k){return Number(k.total)||0}, false);
+    head += sumRow("순주문수량", function(k){return sums[k.name.trim()]}, false);
+    head += sumRow("취소수량(참고)", function(k){return cancels[k.name.trim()]}, false);
+    var remainRow = '<tr class="sum"><td></td><td></td><td></td><td></td><td class="lbl">잔여수량</td>';
+    kws.forEach(function(k){
+      var rem = (Number(k.total)||0) - sums[k.name.trim()];
+      remainRow += '<td class="num '+(rem<0?"neg":"")+'">'+rem+'</td>';
+    });
+    remainRow += '<td class="num">'+(payTotal?fmt(payTotal):"")+'</td><td>합계 결제금액</td></tr>';
+    head += remainRow;
+
+    sheetEl.innerHTML = th + '<tbody>' + head + body + '</tbody>';
+
+    if(group){
+      var pd = group.pd;
+      metaEl.textContent = "수령일별 시트 · 수령일 "+pd.y+"-"+("0"+pd.m).slice(-2)+"-"+("0"+pd.d).slice(-2)+" · 상품 "+kws.length+"개 · 해당 상품 수량이 있는 행 "+shown+"건";
+    } else {
+      metaEl.textContent = "원본 시트 · 대화 전체 · 수령일별로 "+groups.length+"개 시트로 분리됩니다";
+    }
+    var over = kws.filter(function(k){return (Number(k.total)||0) - sums[k.name.trim()] < 0}).map(function(k){return k.name.trim()});
+    var a = "메시지 "+shown+"건 · 주문 "+orderCount+" · 취소 "+cancelCount+" · 확인 필요 "+reviewCount;
+    if(over.length){a += " · 재고 초과: "+over.join(", ")}
+    alertsEl.textContent = a;
+  }
+
+  function renderKw(){
+    kwEl.innerHTML = "";
+    kwList.forEach(function(k,i){
+      var item = document.createElement("div"); item.className = "kwitem";
+      item.innerHTML =
+        '<div class="kwline"><input type="text" id="kn'+i+'" aria-label="상품명" placeholder="상품명 (별칭은 / 로 구분)" value="'+esc(k.name)+'">' +
+        '<button type="button" class="icon" id="kd'+i+'" aria-label="상품 삭제">×</button></div>' +
+        '<div class="kwnums">' +
+        '<label for="kp'+i+'">판매가<input type="number" id="kp'+i+'" min="0" value="'+esc(k.price)+'"></label>' +
+        '<label for="kt'+i+'">총수량<input type="number" id="kt'+i+'" min="0" value="'+esc(k.total)+'"></label>' +
+        '<label for="kdt'+i+'">수령일<input type="text" id="kdt'+i+'" placeholder="10.8" value="'+esc(k.date)+'"></label>' +
+        '</div>';
+      kwEl.appendChild(item);
+      item.querySelector("#kn"+i).addEventListener("input",function(e){kwList[i].name=e.target.value;render()});
+      item.querySelector("#kp"+i).addEventListener("input",function(e){kwList[i].price=e.target.value;render()});
+      item.querySelector("#kt"+i).addEventListener("input",function(e){kwList[i].total=e.target.value;render()});
+      item.querySelector("#kdt"+i).addEventListener("input",function(e){kwList[i].date=e.target.value;render()});
+      item.querySelector("#kd"+i).addEventListener("click",function(){kwList.splice(i,1);renderKw();render()});
+    });
+  }
+
+  /* 자동 수집 시뮬레이션 */
+  var simBtn = document.getElementById("sim"), simText = document.getElementById("simtext"), liveDot = document.getElementById("livedot");
+  function stopSim(label){
+    if(simTimer){clearInterval(simTimer);simTimer=null}
+    simBtn.textContent = "자동 수집 시뮬레이션";
+    liveDot.classList.remove("on");
+    simText.textContent = label || "대기 중";
+  }
+  function stamp(){var d=new Date();return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)+":"+("0"+d.getSeconds()).slice(-2)}
+  function tick(){
+    if(simPos >= FEED.length){stopSim("수집 완료 · "+FEED.length+"/"+FEED.length+"건 · 마지막 갱신 "+stamp());return}
+    chatEl.value = chatEl.value.replace(/\n+$/,"") + "\n" + FEED[simPos].join("\n");
+    simPos++;
+    simText.textContent = "수집 중 · "+simPos+"/"+FEED.length+"건 · 마지막 갱신 "+stamp();
+    render();
+  }
+  simBtn.addEventListener("click",function(){
+    if(simTimer){stopSim("중지됨 · "+simPos+"/"+FEED.length+"건");return}
+    simPos = 0; checks = {};
+    chatEl.value = DATE_HEAD;
+    simBtn.textContent = "중지";
+    liveDot.classList.add("on");
+    render(); tick();
+    simTimer = setInterval(tick, 2500);
+  });
+
+  document.getElementById("addkw").addEventListener("click",function(){
+    if(kwList.length>=8){return}
+    kwList.push({name:"",price:0,total:0,date:""});renderKw();render();
+  });
+  document.getElementById("sample").addEventListener("click",function(){stopSim("대기 중");chatEl.value=SAMPLE;render()});
+  document.getElementById("clear").addEventListener("click",function(){stopSim("대기 중");chatEl.value="";checks={};render()});
+  chatEl.addEventListener("input",render);
+  sheetEl.addEventListener("change",function(e){
+    var t = e.target;
+    if(t && t.matches('input[type="checkbox"][data-row]')){
+      getChecks(+t.getAttribute("data-row"))[+t.getAttribute("data-col")] = t.checked;
+      render();
+    }
+  });
+
+  chatEl.value = SAMPLE;
+  renderKw();
+  render();
+})();
+</script>
+
+</body>
+</html>
