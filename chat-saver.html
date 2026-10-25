@@ -1,0 +1,63 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대화 저장 도구 시연</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>:root{--bg:#f3f5f4;--surface:#fff;--fg:#1c2623;--muted:#5b6a65;--line:#d5dcd9;--accent:#1d6b57;--accent-fg:#fff;--ok:#1d6b57;--bad:#b3392f;--warn:#9a6a00;--font-body:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;--font-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#141a18;--surface:#1c2421;--fg:#e6ecea;--muted:#9aaba5;--line:#2f3b37;--accent:#4fb99b;--accent-fg:#0d1512;--ok:#6fd0b2;--bad:#ff8a7e;--warn:#e0b04a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.55;padding:20px 16px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:22px;margin:0;line-height:1.25}
+.sub{color:var(--muted);margin:4px 0 0;max-width:76ch}
+.nav{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}.nav a{color:var(--accent)}.nav a[aria-current]{color:var(--fg);font-weight:700;text-decoration:none}
+.notice{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:10px 14px;color:var(--muted);font-size:13px}.notice b{color:var(--fg)}
+.grid{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{font-size:13px;margin:0;letter-spacing:.04em;color:var(--muted)}
+label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+select,input[type=text],textarea{font:inherit;font-size:13px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;width:100%}
+.chk{flex-direction:row;align-items:center;gap:8px;font-size:13px;color:var(--fg)}
+button{font:inherit;font-size:13px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 14px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:700}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.log{font-family:var(--font-data);font-size:12.5px;line-height:1.7;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:10px;min-height:220px;max-height:340px;overflow:auto;white-space:pre-wrap}
+.log .ok{color:var(--ok)}.log .bad{color:var(--bad)}.log .warn{color:var(--warn)}.log .dim{color:var(--muted)}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.badge{display:inline-block;font-family:var(--font-data);font-size:12px;border:1px solid var(--line);border-radius:3px;padding:1px 7px}
+.rooms{display:flex;flex-direction:column;gap:6px}.tabs{display:flex;gap:4px;flex-wrap:wrap}.tabs button[aria-selected=true]{border-color:var(--accent);font-weight:700}.file{font-family:var(--font-data);font-size:12.5px;line-height:1.65;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:10px;height:230px;overflow:auto;white-space:pre-wrap}.meta{font-size:12px;color:var(--muted);font-family:var(--font-data)}textarea{min-height:90px;resize:vertical}</style></head><body><div class="wrap"><div class="nav"><a href="index.html">주문 파서</a><a href="chat-saver.html" aria-current="page">대화 저장 도구</a><a href="auto-login.html">지점 자동 로그인</a></div>
+<header><h1>PC 메신저 대화 저장 도구 (시연)</h1><p class="sub">여러 채팅방의 대화를 일정 주기로 텍스트 파일로 저장하는 Windows 프로그램의 동작을 브라우저에서 흉내 낸 시연입니다. 사례 1의 주문 파서가 읽는 입력 파일을 만드는 도구입니다.</p></header>
+<div class="notice"><b>시뮬레이션입니다.</b> 실제 도구는 Windows 데스크톱 프로그램(Python, tkinter, Win32)으로, 채팅 창을 앞으로 가져오지 않고 창마다 저장 단축키(Ctrl+S)를 보내 텍스트로 저장하며 실패하면 최대 3회 재시도합니다. 이 페이지는 그 흐름을 가상의 채팅방과 대화로 재현하며, 아무것도 전송·저장하지 않습니다.</div>
+<div class="grid"><div class="panel"><h2>설정</h2>
+<label>저장 주기<select id="iv"><option value="10000">10초 (실제 설정)</option><option value="3000" selected>3초 (시연용 빠르게)</option></select></label>
+<div class="rooms"><label class="chk"><input type="checkbox" class="room" value="A" checked>가상 채팅방 A</label><label class="chk"><input type="checkbox" class="room" value="B" checked>가상 채팅방 B</label><label class="chk"><input type="checkbox" class="room" value="C">가상 채팅방 C</label></div>
+<label class="chk"><input type="checkbox" id="gen" checked>새 메시지가 계속 올라오는 상황 재현</label>
+<label class="chk"><input type="checkbox" id="fail">저장 실패 재현 (재시도 3회 후 다음 주기로)</label>
+<div class="btns"><button class="primary" id="go">저장 시작</button><button id="stop" disabled>중지</button></div>
+<label>내가 지금 쓰고 있는 문서 (저장이 도는 동안에도 커서가 유지되는지 확인해 보세요)<textarea id="work" placeholder="여기에 입력하며 저장 로그를 지켜보세요."></textarea></label>
+<p class="hint">실제 도구도 채팅 창을 전면으로 가져오지 않아, 사용자가 다른 작업을 하는 동안 백그라운드에서 저장합니다.</p></div>
+<div style="display:flex;flex-direction:column;gap:16px;min-width:0"><div class="panel"><h2>실행 로그</h2><div class="log" id="log" aria-live="polite"><span class="dim">[대기] 저장 시작을 누르세요.</span></div></div>
+<div class="panel"><h2>저장된 파일 미리보기</h2><div class="tabs" id="tabs" role="tablist"></div><div class="meta" id="meta">—</div><div class="file" id="file" tabindex="0"></div></div></div></div></div>
+<script>
+(function(){
+var names=["가람","나래","다온","라온","마루","바다","사랑"],items=["딸기","귤","사과","배","키위"];
+var rooms={A:{lines:[],saved:null},B:{lines:[],saved:null},C:{lines:[],saved:null}};
+var $=function(i){return document.getElementById(i)},logEl=$('log'),timer=null,gen=null,cur='A',tick=0;
+function t(){var d=new Date();return[d.getHours(),d.getMinutes(),d.getSeconds()].map(function(x){return String(x).padStart(2,'0')}).join(':')}
+function log(m,c){if(logEl.firstChild&&logEl.firstChild.className==='dim')logEl.innerHTML='';var s=document.createElement('div');s.className=c||'';s.textContent='['+t()+'] '+m;logEl.appendChild(s);logEl.scrollTop=logEl.scrollHeight}
+function chatTime(){var d=new Date(),h=d.getHours(),ap=h<12?'오전':'오후';h=h%12||12;return ap+' '+h+':'+String(d.getMinutes()).padStart(2,'0')}
+function newMsg(k){var r=rooms[k];var who=names[Math.floor(Math.random()*names.length)],it=items[Math.floor(Math.random()*items.length)];var body=Math.random()<.15?it+' 1취소요':it+(1+Math.floor(Math.random()*3));r.lines.push('['+who+'] ['+chatTime()+'] '+body)}
+function active(){return Array.prototype.filter.call(document.querySelectorAll('.room'),function(e){return e.checked}).map(function(e){return e.value})}
+function show(){var r=rooms[cur];$('file').textContent=r.saved?r.saved.join('\n'):'(아직 저장된 파일이 없습니다)';$('meta').textContent=r.saved?'채팅방 '+cur+'.txt · '+r.saved.length+'줄 · 마지막 저장 '+r.at:'채팅방 '+cur+'.txt · 저장 전';
+document.querySelectorAll('#tabs button').forEach(function(b){b.setAttribute('aria-selected',b.dataset.k===cur)})}
+['A','B','C'].forEach(function(k){var b=document.createElement('button');b.textContent='채팅방 '+k;b.dataset.k=k;b.setAttribute('role','tab');b.onclick=function(){cur=k;show()};$('tabs').appendChild(b)});
+function save(k,done){var r=rooms[k],fail=$('fail').checked,tries=0;log('채팅방 '+k+': 창 확인 (전면으로 가져오지 않음)','dim');
+(function attempt(){tries++;setTimeout(function(){if(!timer)return;if(fail){log('채팅방 '+k+': 저장 시도 '+tries+'/3 실패','warn');if(tries<3)return attempt();log('채팅방 '+k+': 3회 실패, 이번 주기는 건너뛰고 다음 주기에 다시 시도합니다 (오류 로그 기록)','bad');return done()}
+r.saved=r.lines.slice();r.at=t();log('채팅방 '+k+': Ctrl+S 전달 → 텍스트 저장 완료 ('+r.saved.length+'줄)','ok');show();done()},350)})()}
+function cycle(){tick++;var ks=active();if(!ks.length){log('선택된 채팅방이 없습니다','warn');return}log('— 저장 주기 '+tick+' 시작 ('+ks.length+'개 채팅방) —','dim');var i=0;(function next(){if(i>=ks.length||!timer)return;var k=ks[i++];save(k,next)})()}
+$('go').onclick=function(){if(timer)return;tick=0;$('go').disabled=true;$('stop').disabled=false;active().forEach(function(k){if(!rooms[k].lines.length){for(var i=0;i<4;i++)newMsg(k)}});timer=1;log('저장 시작 (주기 '+($('iv').value/1000)+'초)','ok');cycle();timer=setInterval(cycle,+$('iv').value);gen=setInterval(function(){if($('gen').checked)active().forEach(function(k){if(Math.random()<.7)newMsg(k)})},1500)};
+$('stop').onclick=function(){clearInterval(timer);clearInterval(gen);timer=gen=null;$('go').disabled=false;$('stop').disabled=true;log('저장을 중지했습니다','warn')};
+show();
+})();
+</script></body></html>
