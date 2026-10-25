@@ -1,7 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>지점 자동 로그인 시연</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-<style>:root{--bg:#f3f5f4;--surface:#fff;--fg:#1c2623;--muted:#5b6a65;--line:#d5dcd9;--accent:#1d6b57;--accent-fg:#fff;--ok:#1d6b57;--bad:#b3392f;--warn:#9a6a00;--font-body:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;--font-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>에이전트 연동 지점 자동 로그인 시연</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"><style>:root{--bg:#f3f5f4;--surface:#fff;--fg:#1c2623;--muted:#5b6a65;--line:#d5dcd9;--accent:#1d6b57;--accent-fg:#fff;--ok:#1d6b57;--bad:#b3392f;--warn:#9a6a00;--font-body:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;--font-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
 @media (prefers-color-scheme:dark){:root{--bg:#141a18;--surface:#1c2421;--fg:#e6ecea;--muted:#9aaba5;--line:#2f3b37;--accent:#4fb99b;--accent-fg:#0d1512;--ok:#6fd0b2;--bad:#ff8a7e;--warn:#e0b04a;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.55;padding:20px 16px 40px}
@@ -26,40 +23,94 @@ button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-vis
 .log .ok{color:var(--ok)}.log .bad{color:var(--bad)}.log .warn{color:var(--warn)}.log .dim{color:var(--muted)}
 .hint{font-size:12px;color:var(--muted);margin:0}
 .badge{display:inline-block;font-family:var(--font-data);font-size:12px;border:1px solid var(--line);border-radius:3px;padding:1px 7px}
-.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.steps li{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:5px;padding:7px 10px;font-size:13px;background:var(--bg);color:var(--muted)}.steps li.run{border-color:var(--accent);color:var(--fg)}.steps li.done{color:var(--fg)}.steps li.done::before{content:"✓";color:var(--ok);font-weight:700}.steps li.err{border-color:var(--bad);color:var(--fg)}.steps li.err::before{content:"✕";color:var(--bad);font-weight:700}.steps li.pend::before,.steps li.run::before{content:"·";font-weight:700}.fake{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}.fake .bar{background:var(--bg);padding:6px 10px;font-family:var(--font-data);font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}.fake .body{padding:18px;min-height:90px;font-size:13px;color:var(--muted)}.fake.on .body{color:var(--fg)}table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{border:1px solid var(--line);padding:5px 8px;text-align:left}th{color:var(--muted);font-weight:500}tr.hit td{background:color-mix(in srgb,var(--accent) 14%,transparent)}</style></head><body><div class="wrap"><div class="nav"><a href="index.html">주문 파서</a><a href="chat-saver.html">대화 저장 도구</a><a href="auto-login.html" aria-current="page">지점 자동 로그인</a></div>
-<header><h1>지점 자동 로그인 프로그램 (흐름 시연)</h1><p class="sub">업무 자동화 에이전트가 직접 로그인할 수 없는 환경에서, 프로그램이 대신 로그인해 로그인된 브라우저를 남기고 에이전트가 이어서 작업하게 하는 흐름을 단계별로 보여 주는 시연입니다.</p></header>
-<div class="notice"><b>시뮬레이션입니다.</b> 실제 로그인, 실제 사이트 접속, 계정 정보는 전혀 없습니다. 지점 이름과 화면은 모두 가상이며, 단계 구성과 종료 코드 체계만 실제 프로그램을 따라 재현했습니다. 입력한 값은 어디에도 전송되지 않습니다.</div>
-<div class="grid"><div class="panel"><h2>실행 조건</h2>
-<label>실행 파일 이름 (지점 구분)<select id="br"><option>A지점.exe</option><option>B지점.exe</option><option>C지점.exe</option><option>D지점.exe</option></select></label>
-<label>실행 환경<select id="env"><option value="win">Windows (개발·검증)</option><option value="linux">Linux 가상 PC (에이전트 환경)</option></select></label>
-<label>상황 재현<select id="sc"><option value="ok">정상</option><option value="cfg">설정 오류 (지점 정보가 설정 파일에 없음)</option><option value="fail">로그인 실패 (로그인 화면에 머묾)</option><option value="browser">브라우저 실행 실패 (같은 지점 브라우저가 이미 열려 있음)</option><option value="timeout">제한 시간 초과</option></select></label>
-<div class="btns"><button class="primary" id="run">실행</button><button id="reset">초기화</button></div>
-<h2>종료 코드</h2><table><thead><tr><th>코드</th><th>의미</th></tr></thead><tbody id="codes"><tr data-c="0"><td>0</td><td>로그인 성공 (또는 이미 로그인됨)</td></tr><tr data-c="1"><td>1</td><td>로그인 실패</td></tr><tr data-c="2"><td>2</td><td>설정 오류 (지점명·설정 파일·계정 정보)</td></tr><tr data-c="3"><td>3</td><td>브라우저 실행 실패</td></tr><tr data-c="4"><td>4</td><td>전체 제한 시간 초과 (멈춘 단계를 로그에 기록)</td></tr></tbody></table>
-<p class="hint">무인 환경에서도 종료 코드와 단계별 로그만으로 어느 단계에서 멈췄는지 파악할 수 있게 만들었습니다.</p></div>
-<div style="display:flex;flex-direction:column;gap:16px;min-width:0"><div class="panel"><h2>진행 단계</h2><ol class="steps" id="steps"></ol></div>
-<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><div class="panel"><h2>단계별 로그</h2><div class="log" id="log" style="min-height:150px"><span class="dim">[대기] 실행을 누르세요.</span></div></div>
-<div class="panel"><h2>업무 자동화 에이전트</h2><div class="fake" id="fake"><div class="bar" id="url">(브라우저 없음)</div><div class="body" id="fb"></div></div></div></div></div></div></div>
+
+.ctl{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}.ctl label{min-width:170px}
+.cols{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr) minmax(0,.9fr);gap:16px;align-items:start}
+@media(max-width:1000px){.cols{grid-template-columns:minmax(0,1fr)}}
+.win{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;min-width:0}
+.win .tb{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg);border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.files{padding:6px}.f{display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:5px;font-size:12.5px}.f.sel{background:color-mix(in srgb,var(--accent) 16%,transparent);font-weight:700}.f .n{flex:1}.f small{color:var(--muted);font-weight:400}
+.json{font-family:var(--font-data);font-size:11.5px;line-height:1.55;background:var(--bg);border-top:1px solid var(--line);padding:8px 10px;white-space:pre-wrap;color:var(--muted)}
+.json .hl{color:var(--fg);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.url{font-family:var(--font-data);font-size:12px;padding:5px 10px;border-bottom:1px solid var(--line);color:var(--muted);background:var(--bg)}
+.view{height:330px;padding:16px;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;font-size:13px;color:var(--muted);text-align:center}
+.form{width:min(260px,100%);display:flex;flex-direction:column;gap:8px;text-align:left}.form .in{border:1px solid var(--line);border-radius:4px;padding:7px 9px;background:var(--bg);font-family:var(--font-data);font-size:12px;min-height:30px;color:var(--fg)}
+.form .go{background:var(--accent);color:var(--accent-fg);border-radius:4px;padding:7px;text-align:center;font-weight:700}.form .err{color:var(--bad);font-size:12px}
+.dash{width:100%;align-self:stretch;display:flex;flex-direction:column;gap:10px;text-align:left;justify-content:flex-start}
+.dash h3{margin:0;font-size:15px;color:var(--fg)}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cards div{border:1px solid var(--line);border-radius:6px;padding:8px;font-size:11.5px;color:var(--muted)}.cards b{display:block;font-size:18px;color:var(--fg)}
+.dash table{width:100%;border-collapse:collapse;font-size:12px}.dash td,.dash th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;color:var(--fg)}.dash th{color:var(--muted);font-weight:500}
+.spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%}
+@media(prefers-reduced-motion:no-preference){.spin{animation:sp 1s linear infinite}}@keyframes sp{to{transform:rotate(360deg)}}
+.dlg{border:1px solid var(--bad);border-radius:6px;padding:12px 16px;background:var(--bg);color:var(--fg)}
+.steps{list-style:none;margin:0;padding:8px;display:flex;flex-direction:column;gap:5px}.steps li{display:flex;gap:8px;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:12.5px;background:var(--bg);color:var(--muted)}
+.steps li.run{border-color:var(--accent);color:var(--fg)}.steps li.done{color:var(--fg)}.steps li.done::before{content:"✓";color:var(--ok);font-weight:700}.steps li.err{border-color:var(--bad);color:var(--fg)}.steps li.err::before{content:"✕";color:var(--bad);font-weight:700}.steps li.pend::before,.steps li.run::before{content:"·"}
+.codes{width:100%;border-collapse:collapse;font-size:12px}.codes td{border-top:1px solid var(--line);padding:5px 9px}.codes tr.hit td{background:color-mix(in srgb,var(--accent) 16%,transparent);font-weight:700}
+.agent{padding:8px 10px;font-size:12.5px;display:flex;flex-direction:column;gap:5px}.agent .t{padding:5px 8px;border:1px solid var(--line);border-radius:5px;color:var(--muted)}.agent .t.done{color:var(--fg)}.agent .t.done::before{content:"✓ ";color:var(--ok)}.agent .lock{color:var(--warn);font-size:12px}
+details{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:8px 12px}summary{cursor:pointer;color:var(--muted);font-size:13px}.log{min-height:100px;max-height:180px;margin-top:8px}
+
+.chat{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:250px;max-height:440px;overflow:auto;background:var(--bg)}
+.b{max-width:88%;padding:7px 10px;border-radius:10px;font-size:12.5px;border:1px solid var(--line);background:var(--surface)}
+.b.u{align-self:flex-end;background:color-mix(in srgb,var(--accent) 16%,var(--surface))}.b.a{align-self:flex-start}.b small{display:block;color:var(--muted);font-size:10.5px;margin-bottom:2px}
+.b.wait{border-style:dashed;color:var(--warn)}
+.agent{padding:8px 10px;display:block}.agent[hidden]{display:none}
+</style></head><body><div class="wrap"><div class="nav"><a href="index.html">주문 파서</a><a href="chat-saver.html">대화 저장 도구</a><a href="auto-login.html" aria-current="page">지점 자동 로그인</a></div>
+<header><h1>에이전트 연동 지점 자동 로그인 (흐름 시연)</h1><p class="sub">사용자가 “○○ 지점에서 ○○ 작업을 해 줘”라고 요청하면, 에이전트가 해당 지점의 로그인 프로그램을 직접 실행해 로그인하고 바로 작업을 이어가는 과정을 기존 방식과 나란히 비교해 보여 주는 시연입니다.</p></header>
+<div class="notice"><b>시뮬레이션입니다.</b> 실제 로그인, 실제 사이트 접속, 계정 정보는 전혀 없습니다. 지점 이름과 화면, 대화는 모두 가상이며, 단계 구성과 종료 코드 체계만 실제 프로그램을 따라 재현했습니다. 입력한 값은 어디에도 전송되지 않습니다.</div>
+<div class="panel"><div class="ctl">
+<label>방식<select id="mode"><option value="new">현재: 에이전트가 프로그램을 직접 실행 (완전 자동)</option><option value="old">기존: 사람이 로그인해 주어야 함</option></select></label>
+<label>요청할 지점<select id="br"><option>A지점</option><option>B지점</option><option>C지점</option><option>D지점</option></select></label>
+<label>요청할 작업<select id="task"><option value="orders">오늘 주문 현황 조회</option><option value="pending">미처리 건 확인</option></select></label>
+<label>프로그램 빌드<select id="env"><option value="linux">Linux 가상 PC (에이전트 환경)</option><option value="win">Windows (개발·검증)</option></select></label>
+<label>상황 재현<select id="sc"><option value="ok">정상</option><option value="cfg">설정 오류 (지점 정보 없음)</option><option value="fail">로그인 실패</option><option value="browser">브라우저 실행 실패</option><option value="timeout">제한 시간 초과</option></select></label>
+<div class="btns"><button class="primary" id="run">요청 보내기</button><button id="reset">초기화</button></div></div></div>
+<div class="cols">
+<div class="stack" style="display:flex;flex-direction:column;gap:16px;min-width:0"><div class="win"><div class="tb"><span class="dot"></span><span class="dot"></span><span class="dot"></span>에이전트와의 대화 (가상)</div><div class="chat" id="chat"></div><div class="agent" id="humanbox" hidden><button id="human">사람이 로그인했다고 가정하기</button></div></div></div>
+<div class="win"><div class="tb"><span class="dot"></span><span class="dot"></span><span class="dot"></span>브라우저 (가상)</div><div class="url" id="url">(브라우저 없음)</div><div class="view" id="view"></div></div>
+<div class="stack" style="display:flex;flex-direction:column;gap:16px;min-width:0">
+<div class="win"><div class="tb">로그인 프로그램 진행 단계</div><ol class="steps" id="steps"></ol></div>
+<div class="win"><div class="tb">배포 폴더 (가상)</div><div class="files" id="files"></div><div class="json" id="json"></div></div></div></div>
+<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><div class="win"><div class="tb">종료 코드</div><table class="codes" id="codes"><tr data-c="0"><td>0</td><td>로그인 성공 (또는 이미 로그인됨)</td></tr><tr data-c="1"><td>1</td><td>로그인 실패</td></tr><tr data-c="2"><td>2</td><td>설정 오류 (지점명·설정 파일·계정 정보)</td></tr><tr data-c="3"><td>3</td><td>브라우저 실행 실패</td></tr><tr data-c="4"><td>4</td><td>전체 제한 시간 초과 (멈춘 단계를 로그에 기록)</td></tr></table></div>
+<details open><summary>단계별 로그</summary><div class="log" id="log"></div></details></div>
+</div>
 <script>
 (function(){var $=function(i){return document.getElementById(i)},busy=false,gen=0;
 var S=["실행 파일 이름에서 지점 확인","설정 파일에서 지점 정보 읽기","지점 전용 브라우저 프로필 열기","로그인 화면 진입 · 로그인 시도","로그인 확인","로그인된 브라우저를 남기고 종료"];
-var IDLE='로그인된 브라우저가 남으면 에이전트가 이 화면에서 이어서 작업합니다. 비밀번호는 에이전트에 전달되지 않습니다.';
-function t(){var d=new Date();return[d.getHours(),d.getMinutes(),d.getSeconds()].map(function(x){return String(x).padStart(2,'0')}).join(':')}
-function log(m,c){var l=$('log');if(l.firstChild&&l.firstChild.className==='dim')l.innerHTML='';var s=document.createElement('div');s.className=c||'';s.textContent='['+t()+'] '+m;l.appendChild(s);l.scrollTop=l.scrollHeight}
-function render(st,at){var o=$('steps');o.innerHTML='';S.forEach(function(x,i){var li=document.createElement('li');li.textContent=x;li.className=i<at?'done':i===at?st:'pend';o.appendChild(li)})}
-function reset(){gen++;busy=false;$('log').innerHTML='<span class="dim">[대기] 실행을 누르세요.</span>';render('pend',-1);$('url').textContent='(브라우저 없음)';$('fake').classList.remove('on');$('fb').textContent=IDLE;document.querySelectorAll('#codes tr').forEach(function(r){r.className=''});$('run').disabled=false}
+var BR=["A지점","B지점","C지점","D지점"];
+var TK={orders:{n:"오늘 주문 현황 조회",r:"오늘 주문은 12건이고 그중 3건이 미처리입니다. (가상 데이터)"},pending:{n:"미처리 건 확인",r:"미처리 건은 3건입니다: S-0002, S-0003 외 1건. (가상 데이터)"}};
+function now(){var d=new Date();return[d.getHours(),d.getMinutes(),d.getSeconds()].map(function(x){return String(x).padStart(2,'0')}).join(':')}
+function log(m,c){var s=document.createElement('div');s.className=c||'';s.textContent='['+now()+'] '+m;$('log').appendChild(s);$('log').scrollTop=1e9}
+function say(who,txt,cls){var d=document.createElement('div');d.className='b '+(who==='u'?'u':'a')+(cls?' '+cls:'');d.innerHTML='<small>'+(who==='u'?'사용자':'에이전트')+'</small>';var s=document.createElement('span');s.textContent=txt;d.appendChild(s);$('chat').appendChild(d);$('chat').scrollTop=1e9}
+function files(sel){var env=$('env').value,ext=env==='win'?'.exe':'';var h='';BR.forEach(function(b){h+='<div class="f'+(b===sel?' sel':'')+'"><span>⚙</span><span class="n">'+b+ext+'</span><small>'+(env==='win'?'Windows':'Linux')+'</small></div>'});h+='<div class="f"><span>📄</span><span class="n">branches.json</span><small>지점별 설정</small></div>';$('files').innerHTML=h;
+var j='{\n';BR.forEach(function(b,i){var l='  "'+b+'": { "id": "••••••", "pw": "••••••••" }'+(i<3?',':'');j+=(b===sel?'<span class="hl">'+l+'</span>':l)+'\n'});j+='}\n(실제 값은 표시하지 않습니다)';$('json').innerHTML=j}
+function steps(st,at){var o=$('steps');o.innerHTML='';S.forEach(function(x,i){var li=document.createElement('li');li.textContent=x;li.className=i<at?'done':i===at?st:'pend';o.appendChild(li)})}
+function view(k,name){var v=$('view'),u=$('url');
+ if(k==='none'){u.textContent='(브라우저 없음)';v.innerHTML='로그인된 브라우저가 열리면 여기에 보입니다'}
+ else if(k==='open'){u.textContent='[가상] 지점 전용 프로필로 열기';v.innerHTML='<div class="spin"></div>브라우저 시작 중'}
+ else if(k==='login'||k==='typing'||k==='wrong'){u.textContent='[가상] 로그인 페이지';v.innerHTML='<div class="form"><b style="color:var(--fg)">'+name+' 로그인</b><div class="in">'+(k==='login'?'':'••••••')+'</div><div class="in">'+(k==='login'?'':'••••••••')+'</div><div class="go">로그인</div>'+(k==='wrong'?'<div class="err">로그인되지 않았습니다 (계정 또는 화면 상태 확인 필요)</div>':'')+'</div>'}
+ else if(k==='stuck'){u.textContent='[가상] 로그인 페이지';v.innerHTML='<div class="spin"></div>응답을 기다리는 중…'}
+ else if(k==='err'){u.textContent='(브라우저 없음)';v.innerHTML='<div class="dlg">브라우저를 시작할 수 없습니다<br><small>같은 지점의 브라우저가 이미 열려 있습니다</small></div>'}
+ else if(k==='dash'){u.textContent='[가상] '+name+' · 로그인된 업무 화면';v.innerHTML='<div class="dash"><h3>'+name+' 업무 화면 (가상)</h3><div class="cards"><div>오늘 주문<b>12건</b></div><div>미처리<b>3건</b></div><div>출고 완료<b>9건</b></div></div><table><tr><th>주문번호</th><th>상품</th><th>상태</th></tr><tr><td>S-0001</td><td>딸기 2</td><td>출고</td></tr><tr><td>S-0002</td><td>귤 1</td><td>미처리</td></tr><tr><td>S-0003</td><td>사과 3</td><td>미처리</td></tr></table></div>'}}
+function reset(){gen++;busy=false;$('log').innerHTML='';$('chat').innerHTML='';$('humanbox').hidden=true;steps('pend',-1);view('none');files($('br').value);document.querySelectorAll('#codes tr').forEach(function(r){r.className=''});$('run').disabled=false}
 function end(c,why){document.querySelectorAll('#codes tr').forEach(function(r){r.className=r.dataset.c==c?'hit':''});log('종료 코드 '+c+' · '+why,c==0?'ok':'bad');busy=false;$('run').disabled=false}
+function runSeq(plan,g){var i=0;(function n(){if(g!==gen||i>=plan.length)return;var p=plan[i++];setTimeout(function(){if(g!==gen)return;if(p[0]()===false)return;n()},p[1])})()}
+function doWork(name,task,g){var t=TK[task];runSeq([[function(){say('a','로그인된 화면에서 작업을 시작합니다: '+t.n)},800],[function(){view('dash',name)},700],[function(){say('a',name+' '+t.n+' 결과: '+t.r);busy=false;$('run').disabled=false},900]],g)}
 $('run').onclick=function(){if(busy)return;reset();var g=gen;busy=true;$('run').disabled=true;
-var br=$('br').value,env=$('env').value,sc=$('sc').value,name=br.replace('.exe','');
-var plan=[];
-function add(f){plan.push(f)}
-add(function(){render('run',0);log("실행 파일 이름 "+br+" → 지점 '"+name+"' 확인")});
-add(function(){render('run',1);if(sc==='cfg'){render('err',1);log("설정 파일에 '"+name+"' 지점 정보가 없습니다",'bad');end(2,'설정 오류');return false}log('설정 파일에서 지점 정보 확인 (계정 값은 표시하지 않음)','dim');if(env==='linux')log('Linux 환경: 문자 인코딩(로케일)을 UTF-8로 자동 보정','warn')});
-add(function(){render('run',2);if(sc==='browser'){render('err',2);log('브라우저를 열 수 없습니다 (같은 지점의 브라우저가 이미 열려 있음)','bad');end(3,'브라우저 실행 실패');return false}log('지점별 전용 프로필로 브라우저 실행')});
-add(function(){render('run',3);log('로그인 화면 진입 후 로그인 시도');if(sc==='timeout'){render('err',3);log('전체 제한 시간(180초) 초과 · 멈춘 단계: 로그인 화면 진입 · 로그인 시도 (시연에서는 즉시 표시)','bad');end(4,'제한 시간 초과');return false}});
-add(function(){render('run',4);if(sc==='fail'){render('err',4);log('로그인 후에도 로그인 화면에 머물러 있습니다','bad');end(1,'로그인 실패');return false}log('로그인 완료 확인')});
-add(function(){render('run',5);log('드라이버만 종료하고 로그인된 브라우저는 그대로 유지','ok')});
-add(function(){render('done',6);$('url').textContent='[가상] '+name+' · 로그인된 업무 화면';$('fake').classList.add('on');$('fb').textContent='에이전트가 이 화면에서 작업을 이어갑니다 (로그인 정보는 받지 않음).';end(0,'로그인 성공')});
-var i=0;(function n(){if(g!==gen||i>=plan.length)return;setTimeout(function(){if(g!==gen)return;if(plan[i++]()===false)return;n()},650)})()};
+var mode=$('mode').value,name=$('br').value,task=$('task').value,env=$('env').value,sc=$('sc').value;
+say('u',name+'에서 '+TK[task].n+' 해 줘');
+if(mode==='old'){runSeq([[function(){say('a','해당 계정으로 로그인해 주시면 진행하겠습니다.')},800],[function(){say('a','(로그인이 끝날 때까지 작업을 시작할 수 없습니다 · 사람의 개입 필요)','wait');$('humanbox').hidden=false},500]],g);
+ $('human').onclick=function(){if(g!==gen)return;$('humanbox').hidden=true;say('u','로그인했어요');view('dash',name);doWork(name,task,g)};return}
+var plan=[],add=function(f,d){plan.push([f,d||700])};
+add(function(){say('a',name+' 요청이네요. '+name+' 로그인 프로그램을 실행하겠습니다.');files(name);log('에이전트가 '+name+(env==='win'?'.exe':'')+' 실행','ok')},900);
+add(function(){steps('run',0);log(name+(env==='win'?'.exe':'')+' → 지점 \''+name+'\' 확인')});
+add(function(){steps('run',1);if(sc==='cfg'){steps('err',1);log('설정 파일에 \''+name+'\' 지점 정보가 없습니다','bad');say('a','로그인 프로그램이 종료 코드 2(설정 오류)로 끝났습니다. 설정 파일에서 '+name+' 정보를 확인해야 합니다.');end(2,'설정 오류');return false}log('설정 파일에서 지점 정보 확인 (계정 값은 표시하지 않음)');if(env==='linux')log('Linux 환경: 문자 인코딩(로케일)을 UTF-8로 자동 보정','warn')});
+add(function(){steps('run',2);view('open',name);if(sc==='browser'){setTimeout(function(){if(g!==gen)return;view('err');steps('err',2);log('브라우저를 열 수 없습니다 (같은 지점의 브라우저가 이미 열려 있음)','bad');say('a','종료 코드 3(브라우저 실행 실패)입니다. 같은 지점의 브라우저가 이미 열려 있는지 확인이 필요합니다.');end(3,'브라우저 실행 실패')},600);return false}log('지점별 전용 프로필로 브라우저 실행')},900);
+add(function(){steps('run',3);view('login',name);log('로그인 화면 진입 후 로그인 시도');if(sc==='timeout'){setTimeout(function(){if(g!==gen)return;view('stuck');steps('err',3);log('전체 제한 시간(180초) 초과 · 멈춘 단계: 로그인 화면 진입 · 로그인 시도 (시연에서는 즉시 표시)','bad');say('a','종료 코드 4(제한 시간 초과)입니다. 로그 기준으로 멈춘 단계는 로그인 시도 단계입니다.');end(4,'제한 시간 초과')},1100);return false}},1000);
+add(function(){view('typing',name);steps('run',4);if(sc==='fail'){setTimeout(function(){if(g!==gen)return;view('wrong',name);steps('err',4);log('로그인 후에도 로그인 화면에 머물러 있습니다','bad');say('a','종료 코드 1(로그인 실패)입니다. 계정 상태 확인이 필요합니다.');end(1,'로그인 실패')},700);return false}log('로그인 완료 확인')},900);
+add(function(){view('dash',name);steps('run',5);log('드라이버만 종료하고 로그인된 브라우저는 그대로 유지','ok')},900);
+add(function(){steps('done',6);say('a','로그인이 끝났습니다 (종료 코드 0).');end(0,'로그인 성공');busy=true;$('run').disabled=true;doWork(name,task,g);return false},700);
+runSeq(plan,g)};
+$('br').onchange=function(){files($('br').value)};$('env').onchange=function(){files($('br').value)};
 $('reset').onclick=reset;reset();
 })();
 </script></body></html>
