@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>에이전트 연동 지점 자동 로그인 시연</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"><style>:root{--bg:#f3f5f4;--surface:#fff;--fg:#1c2623;--muted:#5b6a65;--line:#d5dcd9;--accent:#1d6b57;--accent-fg:#fff;--ok:#1d6b57;--bad:#b3392f;--warn:#9a6a00;--font-body:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;--font-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>에이전트 연동 자동 로그인 시연</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet"><style>:root{--bg:#f3f5f4;--surface:#fff;--fg:#1c2623;--muted:#5b6a65;--line:#d5dcd9;--accent:#1d6b57;--accent-fg:#fff;--ok:#1d6b57;--bad:#b3392f;--warn:#9a6a00;--font-body:"Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;--font-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
 @media (prefers-color-scheme:dark){:root{--bg:#141a18;--surface:#1c2421;--fg:#e6ecea;--muted:#9aaba5;--line:#2f3b37;--accent:#4fb99b;--accent-fg:#0d1512;--ok:#6fd0b2;--bad:#ff8a7e;--warn:#e0b04a;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.55;padding:20px 16px 40px}
@@ -55,7 +55,7 @@ details{border:1px solid var(--line);border-radius:6px;background:var(--surface)
 .b.wait{border-style:dashed;color:var(--warn)}
 .agent{padding:8px 10px;display:block}.agent[hidden]{display:none}
 </style></head><body><div class="wrap"><div class="nav"><a href="index.html">주문 파서</a><a href="chat-saver.html">대화 저장 도구</a><a href="auto-login.html" aria-current="page">지점 자동 로그인</a></div>
-<header><h1>에이전트 연동 지점 자동 로그인 (흐름 시연)</h1><p class="sub">사용자가 “○○ 지점에서 ○○ 작업을 해 줘”라고 요청하면, 에이전트가 해당 지점의 로그인 프로그램을 직접 실행해 로그인하고 바로 작업을 이어가는 과정을 기존 방식과 나란히 비교해 보여 주는 시연입니다.</p></header>
+<header><h1>에이전트 연동 지점 자동 로그인 (흐름 시연)</h1><p class="sub">사용자가 지점을 지정해 업무를 요청하면, 에이전트가 해당 지점의 로그인 프로그램을 직접 실행해 로그인하고 바로 작업을 이어가는 과정을 기존 방식과 나란히 비교해 보여 주는 시연입니다. 에이전트는 정책상 외부 사이트의 계정 정보를 직접 입력할 수 없어, 이 프로그램이 로그인만 대신 처리합니다.</p></header>
 <div class="notice"><b>시뮬레이션입니다.</b> 실제 로그인, 실제 사이트 접속, 계정 정보는 전혀 없습니다. 지점 이름과 화면, 대화는 모두 가상이며, 단계 구성과 종료 코드 체계만 실제 프로그램을 따라 재현했습니다. 입력한 값은 어디에도 전송되지 않습니다.</div>
 <div class="panel"><div class="ctl">
 <label>방식<select id="mode"><option value="new">현재: 에이전트가 프로그램을 직접 실행 (완전 자동)</option><option value="old">기존: 사람이 로그인해 주어야 함</option></select></label>
@@ -72,6 +72,14 @@ details{border:1px solid var(--line);border-radius:6px;background:var(--surface)
 <div class="win"><div class="tb">배포 폴더 (가상)</div><div class="files" id="files"></div><div class="json" id="json"></div></div></div></div>
 <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><div class="win"><div class="tb">종료 코드</div><table class="codes" id="codes"><tr data-c="0"><td>0</td><td>로그인 성공 (또는 이미 로그인됨)</td></tr><tr data-c="1"><td>1</td><td>로그인 실패</td></tr><tr data-c="2"><td>2</td><td>설정 오류 (지점명·설정 파일·계정 정보)</td></tr><tr data-c="3"><td>3</td><td>브라우저 실행 실패</td></tr><tr data-c="4"><td>4</td><td>전체 제한 시간 초과 (멈춘 단계를 로그에 기록)</td></tr></table></div>
 <details open><summary>단계별 로그</summary><div class="log" id="log"></div></details></div>
+<div class="panel" id="universal"><h2>범용 자동 로그인 (1단계) — 사이트마다 프로그램을 따로 만들지 않기 위한 확장</h2>
+<p class="hint">위 시연은 지점마다 로그인 프로그램을 두는 방식입니다. 범용 버전은 입력칸 위치를 코드에 고정하지 않고, 로그인 화면에서 아이디 칸·비밀번호 칸·로그인 버튼을 스스로 찾습니다. 아래는 동작 방식과 안전 규칙을 정리한 것이며, 별도의 시뮬레이션은 없습니다.</p>
+<ol class="hint" style="margin:0;padding-left:20px">
+<li><b>감지</b> — 비밀번호 칸을 기준으로 아이디 칸과 로그인 버튼 후보를 점수로 찾고, 화면에 색 테두리(아이디 파랑, 비밀번호 빨강, 버튼 초록)로 표시합니다.</li>
+<li><b>사람 확인(처음 한 번)</b> — 맞으면 승인하고, 틀리면 사람이 직접 클릭해 알려 줍니다. 확인된 위치만 도메인별로 저장하며 비밀번호는 저장하지 않습니다.</li>
+<li><b>이후 자동 로그인</b> — 저장된 위치가 화면과 맞을 때만 입력합니다. 화면이 바뀌어 맞지 않으면 스스로 다시 찾아 입력하지 않고 멈춥니다. 에이전트가 쓰는 실행 파일에는 확인 기능이 없어 저장된 위치만 사용합니다.</li></ol>
+<table class="codes"><tr><td>5</td><td>재확인 필요 (저장된 위치가 없거나 화면과 맞지 않음)</td></tr><tr><td>6</td><td>추가 인증 필요 (OTP 등) — 우회하지 않고 중단</td></tr><tr><td>7</td><td>CAPTCHA 감지 — 입력 전에 중단</td></tr><tr><td>8</td><td>접속 도메인 불일치 또는 안전하지 않은 전송 대상 — 입력하지 않음</td></tr><tr><td>9</td><td>지원하지 않는 화면 구조 (단계별 로그인, iframe 안의 폼 등)</td></tr></table>
+<p class="hint">가상 로그인 사이트 약 30종과 오판·공격 시나리오를 자동 시험으로 검증한 1단계이며, 한 화면 로그인만 지원합니다. 실제 업무 사이트 적용 전 단계입니다.</p></div>
 </div>
 <script>
 (function(){var $=function(i){return document.getElementById(i)},busy=false,gen=0;
@@ -97,11 +105,11 @@ function runSeq(plan,g){var i=0;(function n(){if(g!==gen||i>=plan.length)return;
 function doWork(name,task,g){var t=TK[task];runSeq([[function(){say('a','로그인된 화면에서 작업을 시작합니다: '+t.n)},800],[function(){view('dash',name)},700],[function(){say('a',name+' '+t.n+' 결과: '+t.r);busy=false;$('run').disabled=false},900]],g)}
 $('run').onclick=function(){if(busy)return;reset();var g=gen;busy=true;$('run').disabled=true;
 var mode=$('mode').value,name=$('br').value,task=$('task').value,env=$('env').value,sc=$('sc').value;
-say('u',name+'에서 '+TK[task].n+' 해 줘');
-if(mode==='old'){runSeq([[function(){say('a','해당 계정으로 로그인해 주시면 진행하겠습니다.')},800],[function(){say('a','(로그인이 끝날 때까지 작업을 시작할 수 없습니다 · 사람의 개입 필요)','wait');$('humanbox').hidden=false},500]],g);
+say('u',name+' 기준으로 '+TK[task].n+' 부탁해요');
+if(mode==='old'){runSeq([[function(){say('a',name+' 계정으로 로그인이 필요합니다. 제가 직접 로그인할 수 없으니, 로그인해 주시면 이어서 진행하겠습니다.')},800],[function(){say('a','(로그인이 끝날 때까지 작업을 시작할 수 없습니다 · 사람의 개입 필요)','wait');$('humanbox').hidden=false},500]],g);
  $('human').onclick=function(){if(g!==gen)return;$('humanbox').hidden=true;say('u','로그인했어요');view('dash',name);doWork(name,task,g)};return}
 var plan=[],add=function(f,d){plan.push([f,d||700])};
-add(function(){say('a',name+' 요청이네요. '+name+' 로그인 프로그램을 실행하겠습니다.');files(name);log('에이전트가 '+name+(env==='win'?'.exe':'')+' 실행','ok')},900);
+add(function(){say('a',name+' 계정이 필요한 작업이네요. '+name+' 로그인 프로그램을 실행하겠습니다.');files(name);log('에이전트가 '+name+(env==='win'?'.exe':'')+' 실행','ok')},900);
 add(function(){steps('run',0);log(name+(env==='win'?'.exe':'')+' → 지점 \''+name+'\' 확인')});
 add(function(){steps('run',1);if(sc==='cfg'){steps('err',1);log('설정 파일에 \''+name+'\' 지점 정보가 없습니다','bad');say('a','로그인 프로그램이 종료 코드 2(설정 오류)로 끝났습니다. 설정 파일에서 '+name+' 정보를 확인해야 합니다.');end(2,'설정 오류');return false}log('설정 파일에서 지점 정보 확인 (계정 값은 표시하지 않음)');if(env==='linux')log('Linux 환경: 문자 인코딩(로케일)을 UTF-8로 자동 보정','warn')});
 add(function(){steps('run',2);view('open',name);if(sc==='browser'){setTimeout(function(){if(g!==gen)return;view('err');steps('err',2);log('브라우저를 열 수 없습니다 (같은 지점의 브라우저가 이미 열려 있음)','bad');say('a','종료 코드 3(브라우저 실행 실패)입니다. 같은 지점의 브라우저가 이미 열려 있는지 확인이 필요합니다.');end(3,'브라우저 실행 실패')},600);return false}log('지점별 전용 프로필로 브라우저 실행')},900);
